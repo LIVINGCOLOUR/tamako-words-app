@@ -38,5 +38,6 @@
 - README冒頭を、Singularity Society BootCamp / Vibe Coding応募時にプロダクト価値が伝わる構成へ整理
 - 開発背景、対象ユーザー、おうえんスタンプ、実装状況、今後の予定を追記
 - デモURL、技術構成、起動方法、保存キー情報を整理
+- README冒頭を、タイトル、Demo URL、一文概要の順番に調整
 - アプリ本体のコード、既存機能、保存データ、localStorageキーは変更なし
 
