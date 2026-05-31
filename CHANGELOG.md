@@ -33,4 +33,10 @@
 - 写真削除直後に設定画面のプレビューを消し、写真なし状態として再読み込み
 - `supportStamp.enabled` のような別フラグがあっても、空の `photoDataUrl` を優先してもんちゃんシールへ戻す
 - 保存キー `tamako_english_auto_level_review_v1` は変更なし
+## 2026-05-31 応募向けREADME改善
+
+- README冒頭を、Singularity Society BootCamp / Vibe Coding応募時にプロダクト価値が伝わる構成へ整理
+- 開発背景、対象ユーザー、おうえんスタンプ、実装状況、今後の予定を追記
+- デモURL、技術構成、起動方法、保存キー情報を整理
+- アプリ本体のコード、既存機能、保存データ、localStorageキーは変更なし
 
