@@ -14,6 +14,9 @@ function Get-ContentType([string]$Path) {
     '.png' { 'image/png' }
     '.jpg' { 'image/jpeg' }
     '.jpeg' { 'image/jpeg' }
+    '.webp' { 'image/webp' }
+    '.gif' { 'image/gif' }
+    '.svg' { 'image/svg+xml; charset=utf-8' }
     '.wav' { 'audio/wav' }
     default { 'application/octet-stream' }
   }

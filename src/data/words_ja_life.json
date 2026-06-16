@@ -1,1 +1,44 @@
-﻿[]
+[
+  {
+    "id": "ja_life_hello_1",
+    "mode": "ja_life",
+    "level": 1,
+    "category": "あいさつ",
+    "promptText": "おはよう",
+    "reading": "おはよう",
+    "answerText": "おはよう",
+    "audioText": "おはよう",
+    "legacyKey": "おはよう",
+    "emoji": "☀️",
+    "image": "assets/cards/twemoji/hello.png",
+    "imageAlt": "おはようの絵カード"
+  },
+  {
+    "id": "ja_life_water_2",
+    "mode": "ja_life",
+    "level": 1,
+    "category": "のみもの",
+    "promptText": "みず",
+    "reading": "みず",
+    "answerText": "みず",
+    "audioText": "みず",
+    "legacyKey": "みず",
+    "emoji": "💧",
+    "image": "assets/cards/twemoji/water.png",
+    "imageAlt": "みずの絵カード"
+  },
+  {
+    "id": "ja_life_toilet_3",
+    "mode": "ja_life",
+    "level": 1,
+    "category": "ばしょ",
+    "promptText": "トイレ",
+    "reading": "トイレ",
+    "answerText": "トイレ",
+    "audioText": "トイレ",
+    "legacyKey": "トイレ",
+    "emoji": "🚻",
+    "image": "assets/cards/twemoji/toilet.png",
+    "imageAlt": "トイレの絵カード"
+  }
+]
