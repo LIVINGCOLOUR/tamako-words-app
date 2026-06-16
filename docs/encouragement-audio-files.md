@@ -2,7 +2,7 @@
 
 終了時と復習完了時の固定文言を、事前生成した音声ファイルとして再生するための一覧です。
 
-今回のPoCではリアルタイムTTS APIは使わず、音声ファイルが配置されていればそれを再生し、未配置または再生失敗時はWeb Speech API fallbackで同じ文言を読み上げます。
+現在のPoCでは、Cloudflare Pages Function経由のElevenLabs TTSを先に試し、失敗した場合に音声ファイル、Web Speech API fallbackの順で同じ文言を読み上げます。ElevenLabsのAPIキーやvoice_idはフロントエンドに置かず、Cloudflare Secretで管理します。
 
 ## ブラウザ録音ツール
 
@@ -58,15 +58,16 @@ assets/voices/encouragement/
 ## fallback仕様
 
 - `supportVoiceUsage.encouragement` が `true` のときだけ再生を試します。
-- まず対象文言に対応するWebMを再生します。
+- まず `/api/tts/encouragement` のCloudflare Pages Function経由でElevenLabs TTSを試します。
+- Worker / TTS APIが未設定、失敗、再生失敗の場合は、対象文言に対応するWebMを再生します。
 - WebMが未配置、読み込み失敗、再生失敗の場合はmp3を試します。
 - mp3も未配置、読み込み失敗、再生失敗の場合は、同じ文言をWeb Speech APIで読み上げます。
-- `supportVoiceUsage.encouragement` が `false` のときは、WebM再生、mp3再生、Web Speech API読み上げのどれもしません。
+- `supportVoiceUsage.encouragement` が `false` のときは、Worker呼び出し、WebM再生、mp3再生、Web Speech API読み上げのどれもしません。
 - 正解時・不正解時には、このおうえん音声は再生しません。
 
 ## 作成方針
 
-将来、本人が安心できる人の声で、この15ファイルだけを作れば運用できます。リアルタイムTTS APIを呼ばないため、APIキー管理、通信失敗、継続的なTTS費用を避けやすくなります。
+Worker経由TTSを使わない場合でも、本人が安心できる人の声でこの15ファイルだけを作れば運用できます。音声ファイル方式は、APIキー管理、通信失敗、継続的なTTS費用を避けたい場合のバックアップになります。
 
 すきな人の声を使う場合は、話者本人の同意が必要です。保護者・家族・支援者の声を勝手に登録しないでください。本人が安心して聞ける声だけを使います。
 

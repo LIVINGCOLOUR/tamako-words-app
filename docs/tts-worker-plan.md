@@ -44,9 +44,12 @@ Cloudflare Worker
 
 - APIキーはフロントエンドに置かない。
 - Cloudflare Workerの環境変数またはSecretで管理する。
+- Cloudflare側には `ELEVENLABS_API_KEY` と `ELEVENLABS_VOICE_ID` をSecretとして設定する。
 - GitHubにはAPIキーをコミットしない。
+- voice_idの実値もGitHubにはコミットしない。
 - `.env` などのローカル秘密情報ファイルもコミットしない。
 - Workerのコード内にもAPIキーを直書きしない。
+- ローカル確認用に値を置く場合は `.dev.vars` を使い、コミットするのは実値なしの `.dev.vars.example` だけにする。
 
 ## 5. 最小API案
 
@@ -54,6 +57,12 @@ Worker側エンドポイント案:
 
 ```text
 POST /api/tts/encouragement
+```
+
+現在の実装場所:
+
+```text
+functions/api/tts/encouragement.js
 ```
 
 リクエスト例:
@@ -72,7 +81,7 @@ POST /api/tts/encouragement
 
 レスポンス案:
 
-- 成功時: `audio/mpeg` または `audio/wav`
+- 成功時: `audio/mpeg`
 - 失敗時: JSONでエラーを返す
 
 失敗時レスポンス例:
@@ -86,12 +95,21 @@ POST /api/tts/encouragement
 ## 6. フロント側の実装方針
 
 - `supportVoiceUsage.encouragement` が `true` のときだけ外部TTSを試す。
-- 外部TTSに失敗したらWeb Speech API fallbackに戻す。
+- 外部TTSに失敗したら、音声ファイル、Web Speech APIの順にfallbackする。
 - 終了時・復習完了時だけWorkerを呼ぶ。
 - 正解・不正解ごとには呼ばない。
 - 連続再生しない。
 - スマホの自動再生制約に注意する。
 - 現在の短い声かけ文言の選択処理はできるだけ維持し、読み上げ部分だけ差し替えやすくする。
+
+現在の優先順位:
+
+1. Cloudflare Pages Function経由のElevenLabs TTS
+2. `assets/voices/encouragement/*.webm`
+3. `assets/voices/encouragement/*.mp3`
+4. Web Speech API fallback
+
+`supportVoiceUsage.encouragement` が `false` のときは、Worker呼び出し、音声ファイル再生、Web Speech API読み上げのどれもしない。
 
 ## 7. キャッシュ方針
 
