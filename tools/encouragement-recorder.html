@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>おうえん音声 録音ツール</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root{--ink:#222;--bg:#fffdf6;--card:#fff;--yellow:#ffe76b;--green:#d9f4e8;--blue:#d8ebff;--pink:#ffd8e7}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}
+    main{width:min(1040px,100%);margin:0 auto;padding:24px 16px 48px}
+    h1{margin:0 0 8px;font-size:clamp(28px,5vw,44px);line-height:1.2}
+    h2{margin:28px 0 12px;font-size:24px}
+    p{margin:6px 0}
+    .note{background:var(--green);border:3px solid var(--ink);border-radius:14px;padding:14px 16px;font-weight:800;margin:18px 0}
+    .status{min-height:32px;margin:12px 0 18px;font-weight:900;color:#1c6650}
+    .grid{display:grid;gap:14px}
+    .card{background:var(--card);border:3px solid var(--ink);border-radius:16px;padding:14px;box-shadow:0 5px 0 #0002}
+    .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+    .filename{font-weight:1000;background:var(--yellow);border:2px solid var(--ink);border-radius:999px;padding:4px 10px}
+    .phrase{font-size:24px;font-weight:1000}
+    .actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+    button,.download{appearance:none;border:3px solid var(--ink);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:1000;min-height:48px;padding:8px 10px;text-align:center;text-decoration:none;box-shadow:0 4px 0 #0002;cursor:pointer}
+    button:disabled,.download.disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+    .start{background:var(--blue)}.stop{background:var(--pink)}.play{background:var(--green)}.download{background:var(--yellow);display:flex;align-items:center;justify-content:center}
+    audio{width:100%;margin-top:10px}
+    .itemStatus{font-weight:800;min-height:26px;margin-top:8px;color:#555}
+    .recording .filename{background:var(--pink)}
+    @media(max-width:640px){main{padding:18px 10px 32px}.actions{grid-template-columns:repeat(2,minmax(0,1fr))}.phrase{font-size:22px}button,.download{min-height:54px}}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>おうえん音声 録音ツール</h1>
+    <p>終了時と復習完了時の15文言を、ブラウザのマイクで1つずつ録音するローカル用ツールです。</p>
+    <p>録音したファイルはWebM形式でダウンロードされます。</p>
+    <div class="note">
+      ダウンロードした音声ファイルは、以下に配置してください。<br>
+      <code>assets/voices/encouragement/</code>
+    </div>
+    <div id="globalStatus" class="status" role="status"></div>
+    <section>
+      <h2>通常終了</h2>
+      <div id="finishList" class="grid"></div>
+    </section>
+    <section>
+      <h2>復習完了</h2>
+      <div id="reviewList" class="grid"></div>
+    </section>
+  </main>
+  <script>
+    const items = [
+      { group: "finish", id: "finish-01", text: "きょうもできたね" },
+      { group: "finish", id: "finish-02", text: "よくがんばったね" },
+      { group: "finish", id: "finish-03", text: "さいごまでできたね" },
+      { group: "finish", id: "finish-04", text: "またやろうね" },
+      { group: "finish", id: "finish-05", text: "いいちょうしだね" },
+      { group: "finish", id: "finish-06", text: "すごいね" },
+      { group: "finish", id: "finish-07", text: "えらかったね" },
+      { group: "finish", id: "finish-08", text: "ひとつずつできてるよ" },
+      { group: "finish", id: "finish-09", text: "つづけていてすごいね" },
+      { group: "finish", id: "finish-10", text: "きょうもありがとう" },
+      { group: "review", id: "review-01", text: "ふくしゅうできたね" },
+      { group: "review", id: "review-02", text: "よくおぼえていたね" },
+      { group: "review", id: "review-03", text: "もういちどできてすごいね" },
+      { group: "review", id: "review-04", text: "だいじょうぶ、できてるよ" },
+      { group: "review", id: "review-05", text: "またいっしょにやろうね" }
+    ];
+    const recordings = new Map();
+    let recorder = null;
+    let stream = null;
+    let activeId = "";
+    let chunks = [];
+    const globalStatus = document.getElementById("globalStatus");
+    const preferredMime = ["audio/webm;codecs=opus", "audio/webm"].find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+
+    function setGlobalStatus(text) {
+      globalStatus.textContent = text || "";
+    }
+    function setItemStatus(id, text) {
+      const status = document.querySelector(`[data-status="${id}"]`);
+      if (status) status.textContent = text || "";
+    }
+    function stopStream() {
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+      stream = null;
+    }
+    function releaseRecording(id) {
+      const prev = recordings.get(id);
+      if (prev && prev.url) URL.revokeObjectURL(prev.url);
+      recordings.delete(id);
+    }
+    function updateButtons() {
+      document.querySelectorAll(".card").forEach((card) => {
+        const id = card.dataset.id;
+        const hasRecording = recordings.has(id);
+        const isActive = activeId === id && recorder && recorder.state === "recording";
+        card.classList.toggle("recording", isActive);
+        card.querySelector('[data-action="start"]').disabled = !!recorder;
+        card.querySelector('[data-action="stop"]').disabled = !isActive;
+        card.querySelector('[data-action="play"]').disabled = !hasRecording || !!recorder;
+        const download = card.querySelector('[data-action="download"]');
+        download.classList.toggle("disabled", !hasRecording || !!recorder);
+        download.setAttribute("aria-disabled", String(!hasRecording || !!recorder));
+      });
+    }
+    async function startRecording(item) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+        setGlobalStatus("このブラウザでは録音できません。Chromeなどで開いてください。");
+        return;
+      }
+      try {
+        releaseRecording(item.id);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunks = [];
+        activeId = item.id;
+        recorder = new MediaRecorder(stream, preferredMime ? { mimeType: preferredMime } : undefined);
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size) chunks.push(event.data);
+        };
+        recorder.onstop = () => finishRecording(item);
+        recorder.start();
+        setGlobalStatus("録音中です。読み終わったら停止してください。");
+        setItemStatus(item.id, "録音中");
+        updateButtons();
+      } catch (error) {
+        stopStream();
+        recorder = null;
+        activeId = "";
+        setGlobalStatus("マイクを使えませんでした。ブラウザの許可を確認してください。");
+        updateButtons();
+      }
+    }
+    function stopRecording() {
+      if (recorder && recorder.state === "recording") {
+        recorder.stop();
+        setGlobalStatus("録音を止めています。");
+      }
+    }
+    function finishRecording(item) {
+      const blob = new Blob(chunks, { type: recorder && recorder.mimeType ? recorder.mimeType : "audio/webm" });
+      const url = URL.createObjectURL(blob);
+      recordings.set(item.id, { blob, url });
+      const card = document.querySelector(`[data-id="${item.id}"]`);
+      if (card) {
+        const audio = card.querySelector("audio");
+        audio.src = url;
+        const download = card.querySelector('[data-action="download"]');
+        download.href = url;
+        download.download = `${item.id}.webm`;
+      }
+      stopStream();
+      recorder = null;
+      activeId = "";
+      chunks = [];
+      setGlobalStatus("録音できました。再生して確認できます。");
+      setItemStatus(item.id, `${item.id}.webm をダウンロードできます`);
+      updateButtons();
+    }
+    function playRecording(item) {
+      const card = document.querySelector(`[data-id="${item.id}"]`);
+      const audio = card && card.querySelector("audio");
+      if (!audio || !recordings.has(item.id)) return;
+      audio.currentTime = 0;
+      const play = audio.play();
+      if (play && play.catch) play.catch(() => setItemStatus(item.id, "再生できませんでした"));
+    }
+    function downloadRecording(event, item) {
+      if (!recordings.has(item.id) || recorder) {
+        event.preventDefault();
+        setItemStatus(item.id, "先に録音してください");
+      }
+    }
+    function renderCard(item) {
+      const card = document.createElement("article");
+      card.className = "card";
+      card.dataset.id = item.id;
+      card.innerHTML = `
+        <div class="meta"><span class="filename">${item.id}.webm</span><span class="phrase">${item.text}</span></div>
+        <div class="actions">
+          <button class="start" type="button" data-action="start">録音開始</button>
+          <button class="stop" type="button" data-action="stop" disabled>停止</button>
+          <button class="play" type="button" data-action="play" disabled>再生</button>
+          <a class="download disabled" href="#" data-action="download" aria-disabled="true">ダウンロード</a>
+        </div>
+        <audio controls></audio>
+        <div class="itemStatus" data-status="${item.id}" role="status"></div>
+      `;
+      card.querySelector('[data-action="start"]').addEventListener("click", () => startRecording(item));
+      card.querySelector('[data-action="stop"]').addEventListener("click", stopRecording);
+      card.querySelector('[data-action="play"]').addEventListener("click", () => playRecording(item));
+      card.querySelector('[data-action="download"]').addEventListener("click", (event) => downloadRecording(event, item));
+      return card;
+    }
+    function render() {
+      document.getElementById("finishList").append(...items.filter((item) => item.group === "finish").map(renderCard));
+      document.getElementById("reviewList").append(...items.filter((item) => item.group === "review").map(renderCard));
+      if (!window.MediaRecorder) setGlobalStatus("このブラウザではMediaRecorderを使えません。Chromeなどで開いてください。");
+      updateButtons();
+    }
+    render();
+    window.addEventListener("beforeunload", () => {
+      stopStream();
+      recordings.forEach((recording) => URL.revokeObjectURL(recording.url));
+    });
+  </script>
+</body>
+</html>
