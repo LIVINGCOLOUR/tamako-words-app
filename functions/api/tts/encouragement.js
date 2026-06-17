@@ -1,9 +1,15 @@
-const MODEL_ID = "eleven_multilingual_v2";
+const MODEL_IDS = Object.freeze({
+  multilingualV2: "eleven_multilingual_v2",
+  v3: "eleven_v3",
+});
+const MODEL_ID = MODEL_IDS.multilingualV2;
+const TTS_EXCLAMATION = "！";
 const VOICE_SETTINGS = Object.freeze({
-  stability: 0.35,
-  similarity_boost: 0.75,
-  style: 0.35,
+  stability: 0.25,
+  similarity_boost: 0.7,
+  style: 0.55,
   use_speaker_boost: true,
+  speed: 1.05,
 });
 
 const ALLOWED_MESSAGES = Object.freeze({
@@ -58,6 +64,10 @@ function isAllowedMessage(type, text) {
   return Array.isArray(messages) && messages.includes(text);
 }
 
+function ttsTextOf(text) {
+  return text.endsWith(TTS_EXCLAMATION) ? text : `${text}${TTS_EXCLAMATION}`;
+}
+
 function messageIndex(type, text) {
   const messages = ALLOWED_MESSAGES[type];
   return Array.isArray(messages) ? messages.indexOf(text) : -1;
@@ -89,6 +99,7 @@ export async function onRequestPost({ request, env = {} }) {
   if (!isAllowedMessage(type, text)) {
     return jsonResponse(request, 400, { error: "unsupported_encouragement" });
   }
+  const ttsText = ttsTextOf(text);
 
   const apiKey = typeof env.ELEVENLABS_API_KEY === "string" ? env.ELEVENLABS_API_KEY.trim() : "";
   const voiceId = typeof env.ELEVENLABS_VOICE_ID === "string" ? env.ELEVENLABS_VOICE_ID.trim() : "";
@@ -108,7 +119,7 @@ export async function onRequestPost({ request, env = {} }) {
         "xi-api-key": apiKey,
       },
       body: JSON.stringify({
-        text,
+        text: ttsText,
         model_id: MODEL_ID,
         voice_settings: VOICE_SETTINGS,
       }),
